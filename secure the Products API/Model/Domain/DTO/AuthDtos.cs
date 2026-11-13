@@ -1,6 +1,16 @@
-﻿namespace secure_the_Products_API.Model.Domain.DTO
-{
-    public class AuthDtos
-    {
-    }
-}
+﻿
+public record AuthRequestDto(
+    string Username,
+    string Password
+);
+
+public record RegisterResponseDto(
+    int Id,
+    string Username
+);
+
+public record AuthResponseDto(
+    string Token,
+    string Username,
+    string Role
+);

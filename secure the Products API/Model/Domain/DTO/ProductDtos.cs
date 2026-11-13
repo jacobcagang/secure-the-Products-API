@@ -1,6 +1,11 @@
-﻿namespace secure_the_Products_API.Model.Domain.DTO
-{
-    public class ProductDtos
-    {
-    }
-}
+﻿
+public record ProductRequestDto(
+    string Name,
+    decimal Price
+);
+
+public record ProductDto(
+    int Id,
+    string Name,
+    decimal Price
+);
