@@ -1,6 +1,13 @@
-﻿namespace secure_the_Products_API.Repository
+﻿
+public interface IProductRepository
 {
-    public class IProductRepository
-    {
-    }
+    Task<List<Product>> GetAllAsync();
+
+    Task<Product?> GetByIdAsync(int id);
+
+    Task<Product> AddAsync(Product product);
+
+    Task<Product?> UpdateAsync(int id, Product product);
+
+    Task<bool> DeleteAsync(int id);
 }

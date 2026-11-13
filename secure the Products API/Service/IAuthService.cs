@@ -1,6 +1,7 @@
-﻿namespace secure_the_Products_API.Service
+﻿
+public interface IAuthService
 {
-    public class IAuthService
-    {
-    }
+    Task<RegisterResponseDto?> RegisterAsync(AuthRequestDto request);
+
+    Task<AuthResponseDto?> LoginAsync(AuthRequestDto request);
 }

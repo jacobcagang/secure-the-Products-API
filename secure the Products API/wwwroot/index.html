@@ -1,10 +1,516 @@
-﻿<!DOCTYPE html>
-<html>
+﻿
+<!DOCTYPE html>
+<html lang="en">
 <head>
-    <meta charset="utf-8" />
-    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Products API</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f4f6f9;
+            color: #222;
+        }
+
+        header {
+            background: #202938;
+            color: white;
+            padding: 20px 7%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+            header h1 {
+                font-size: 23px;
+            }
+
+        main {
+            width: 90%;
+            max-width: 1000px;
+            margin: 30px auto;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 22px;
+            box-shadow: 0 3px 12px rgba(0,0,0,.06);
+        }
+
+        h2 {
+            margin-bottom: 18px;
+            color: #202938;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        button {
+            padding: 11px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: white;
+            background: #2563eb;
+            margin: 4px 2px;
+        }
+
+            button:hover {
+                opacity: .85;
+            }
+
+        .danger {
+            background: #dc2626;
+        }
+
+        .success {
+            background: #15803d;
+        }
+
+        .logout {
+            background: #dc2626;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .message {
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        .product {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+            .product h3 {
+                margin-bottom: 5px;
+            }
+
+        .user-info {
+            font-size: 14px;
+            color: #dbeafe;
+        }
+
+        @media (max-width: 600px) {
+            header {
+                padding: 18px;
+            }
+
+            main {
+                width: 94%;
+            }
+        }
+    </style>
 </head>
+
 <body>
+
+    <header>
+        <h1>Secure Products API</h1>
+
+        <div>
+            <span id="userInfo" class="user-info"></span>
+            <button id="logoutBtn" class="logout hidden" onclick="logout()">
+                Logout
+            </button>
+        </div>
+    </header>
+
+    <main>
+
+        <!-- REGISTER AND LOGIN -->
+        <section class="card" id="authSection">
+            <h2>Register</h2>
+
+            <input type="text" id="regUsername" placeholder="Username">
+
+            <input type="password" id="regPassword" placeholder="Password">
+
+            <button onclick="register()">Create Account</button>
+
+            <p id="registerMessage" class="message"></p>
+
+            <hr style="margin:25px 0">
+
+            <h2>Login</h2>
+
+            <input type="text" id="loginUsername" placeholder="Username">
+
+            <input type="password" id="loginPassword" placeholder="Password">
+
+            <button onclick="login()">Login</button>
+
+            <p id="loginMessage" class="message"></p>
+        </section>
+
+        <!-- ADMIN ADD PRODUCT -->
+        <section class="card hidden" id="addSection">
+            <h2>Add Product</h2>
+
+            <input type="text" id="productName" placeholder="Product Name">
+
+            <input type="number" id="productPrice"
+                   placeholder="Product Price" min="0" step="0.01">
+
+            <button class="success" onclick="addProduct()">
+                Add Product
+            </button>
+
+            <p id="productMessage" class="message"></p>
+        </section>
+
+        <!-- PRODUCT LIST -->
+        <section class="card">
+            <h2>Product List</h2>
+
+            <button onclick="loadProducts()">Refresh Products</button>
+
+            <div id="productList"></div>
+        </section>
+
+    </main>
+
+    <script>
+        const tokenKey = "jwtToken";
+        const userKey = "username";
+        const roleKey = "userRole";
+
+        let token = localStorage.getItem(tokenKey);
+
+        // AUTH FETCH - ATTACHES JWT TOKEN
+        function authFetch(url, options = {}) {
+            const headers = {
+                ...(options.headers || {})
+            };
+
+            if (token) {
+                headers["Authorization"] = "Bearer " + token;
+            }
+
+            if (options.body) {
+                headers["Content-Type"] = "application/json";
+            }
+
+            return fetch(url, {
+                ...options,
+                headers: headers
+            });
+        }
+
+        // UPDATE PAGE BASED ON LOGIN STATUS
+        function updateInterface() {
+            token = localStorage.getItem(tokenKey);
+
+            const username = localStorage.getItem(userKey);
+            const role = localStorage.getItem(roleKey);
+
+            const loggedIn = !!token;
+
+            document.getElementById("authSection")
+                .classList.toggle("hidden", loggedIn);
+
+            document.getElementById("logoutBtn")
+                .classList.toggle("hidden", !loggedIn);
+
+            document.getElementById("userInfo").textContent =
+                loggedIn ? username + " (" + role + ")" : "";
+
+            document.getElementById("addSection")
+                .classList.toggle(
+                    "hidden",
+                    !loggedIn || role !== "Admin"
+                );
+        }
+
+        // REGISTER
+        async function register() {
+            const username =
+                document.getElementById("regUsername").value.trim();
+
+            const password =
+                document.getElementById("regPassword").value;
+
+            const message =
+                document.getElementById("registerMessage");
+
+            if (!username || !password) {
+                message.textContent = "Please complete all fields.";
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/auth/register", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                if (response.status === 201) {
+                    message.textContent =
+                        "Account created successfully. You can now login.";
+
+                    document.getElementById("regUsername").value = "";
+                    document.getElementById("regPassword").value = "";
+                } else {
+                    const result = await response.text();
+                    message.textContent =
+                        "Registration failed: " + result;
+                }
+
+            } catch (error) {
+                message.textContent = "Unable to connect to the API.";
+            }
+        }
+
+        // LOGIN
+        async function login() {
+            const username =
+                document.getElementById("loginUsername").value.trim();
+
+            const password =
+                document.getElementById("loginPassword").value;
+
+            const message =
+                document.getElementById("loginMessage");
+
+            if (!username || !password) {
+                message.textContent =
+                    "Please enter your username and password.";
+                return;
+            }
+
+            try {
+                const response = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                if (!response.ok) {
+                    message.textContent =
+                        "Invalid username or password. Status: " +
+                        response.status;
+                    return;
+                }
+
+                const result = await response.json();
+
+                if (!result.token || !result.username || !result.role) {
+                    message.textContent =
+                        "Login response is missing token or user information.";
+                    return;
+                }
+
+                token = result.token;
+
+                localStorage.setItem(tokenKey, result.token);
+                localStorage.setItem(userKey, result.username);
+                localStorage.setItem(roleKey, result.role);
+
+                document.getElementById("loginUsername").value = "";
+                document.getElementById("loginPassword").value = "";
+
+                message.textContent = "Login successful.";
+
+                updateInterface();
+                await loadProducts();
+
+            } catch (error) {
+                message.textContent = "Unable to connect to the API.";
+            }
+        }
+
+        // LOAD PRODUCTS - OPEN TO EVERYONE
+        async function loadProducts() {
+            const list = document.getElementById("productList");
+
+            try {
+                const response = await fetch("/api/products");
+
+                if (!response.ok) {
+                    list.textContent =
+                        "Unable to load products. Status: " + response.status;
+                    return;
+                }
+
+                const products = await response.json();
+
+                list.innerHTML = "";
+
+                if (products.length === 0) {
+                    list.textContent = "No products available.";
+                    return;
+                }
+
+                const isAdmin =
+                    localStorage.getItem(roleKey) === "Admin" && !!token;
+
+                products.forEach(product => {
+                    const item = document.createElement("div");
+                    item.className = "product";
+
+                    const details = document.createElement("div");
+
+                    const name = document.createElement("h3");
+                    name.textContent = product.name;
+
+                    const price = document.createElement("p");
+                    price.textContent =
+                        "Price: ₱" + Number(product.price).toFixed(2);
+
+                    details.appendChild(name);
+                    details.appendChild(price);
+                    item.appendChild(details);
+
+                    if (isAdmin) {
+                        const deleteButton =
+                            document.createElement("button");
+
+                        deleteButton.className = "danger";
+                        deleteButton.textContent = "Delete";
+
+                        deleteButton.onclick = () =>
+                            deleteProduct(product.id);
+
+                        item.appendChild(deleteButton);
+                    }
+
+                    list.appendChild(item);
+                });
+
+            } catch (error) {
+                list.textContent = "Unable to connect to the API.";
+            }
+        }
+
+        // ADD PRODUCT - ADMIN ONLY
+        async function addProduct() {
+            const name =
+                document.getElementById("productName").value.trim();
+
+            const priceInput =
+                document.getElementById("productPrice").value;
+
+            const price = Number(priceInput);
+
+            const message =
+                document.getElementById("productMessage");
+
+            if (!name || priceInput === "" ||
+                !Number.isFinite(price) || price < 0) {
+                message.textContent =
+                    "Enter a valid product name and price.";
+                return;
+            }
+
+            try {
+                const response = await authFetch("/api/products", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        name: name,
+                        price: price
+                    })
+                });
+
+                if (response.status === 201) {
+                    message.textContent =
+                        "Product added successfully.";
+
+                    document.getElementById("productName").value = "";
+                    document.getElementById("productPrice").value = "";
+
+                    await loadProducts();
+
+                } else {
+                    message.textContent =
+                        "Unable to add product. Status: " +
+                        response.status;
+                }
+
+            } catch (error) {
+                message.textContent = "Unable to connect to the API.";
+            }
+        }
+
+        // DELETE PRODUCT - ADMIN ONLY
+        async function deleteProduct(id) {
+            if (!confirm("Are you sure you want to delete this product?")) {
+                return;
+            }
+
+            try {
+                const response = await authFetch(
+                    "/api/products/" + id,
+                    {
+                        method: "DELETE"
+                    }
+                );
+
+                if (response.status === 204) {
+                    await loadProducts();
+                } else {
+                    alert("Delete failed. Status: " + response.status);
+                }
+
+            } catch (error) {
+                alert("Unable to connect to the API.");
+            }
+        }
+
+        // LOGOUT
+        function logout() {
+            localStorage.removeItem(tokenKey);
+            localStorage.removeItem(userKey);
+            localStorage.removeItem(roleKey);
+
+            token = null;
+
+            updateInterface();
+            loadProducts();
+        }
+
+        // INITIAL PAGE LOAD
+        updateInterface();
+        loadProducts();
+
+    </script>
 
 </body>
 </html>

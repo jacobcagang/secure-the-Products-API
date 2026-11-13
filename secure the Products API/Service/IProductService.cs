@@ -1,6 +1,13 @@
-﻿namespace secure_the_Products_API.Service
+﻿
+public interface IProductService
 {
-    public class IProductService
-    {
-    }
+    Task<List<ProductDto>> GetAllAsync();
+
+    Task<ProductDto?> GetByIdAsync(int id);
+
+    Task<ProductDto> CreateAsync(ProductRequestDto request);
+
+    Task<ProductDto?> UpdateAsync(int id, ProductRequestDto request);
+
+    Task<bool> DeleteAsync(int id);
 }

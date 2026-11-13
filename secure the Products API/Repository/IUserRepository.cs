@@ -1,6 +1,7 @@
-﻿namespace secure_the_Products_API.Repository
+﻿
+public interface IUserRepository
 {
-    public class IUserRepository
-    {
-    }
+    Task<User?> GetByUsernameAsync(string username);
+
+    Task<User> AddAsync(User user);
 }
